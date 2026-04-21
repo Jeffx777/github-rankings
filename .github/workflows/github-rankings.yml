@@ -2,18 +2,17 @@ name: GitHub Rankings
 
 on:
   schedule:
-    # 最热门榜单：每周二下午 5 点推送 (UTC+8 时区)
+    # 最热门榜单：每周二下午 5 点推送 (UTC+8 时区 = UTC 早上 9 点)
     - cron: '0 9 * * 2'
-    # 上升趋势榜单：每天下午 4 点推送 (UTC+8 时区)  
+    # 上升趋势榜单：每天下午 4 点推送 (UTC+8 时区 = UTC 早上 8 点)
     - cron: '0 8 * * *'
   workflow_dispatch:
 
 jobs:
   hot-ranking:
-    if: github.event.schedule == '0 9 * * 2' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      -我看 name: Checkout
         uses: actions/checkout@v4
 
       - name: Fetch Top 10 Most Popular Repos (Last 30 Days)
@@ -43,7 +42,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trend-ranking:
-    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,13 +51,37 @@ jobs:
         id: fetch_trending
         run: |
           DATE=$(date -u -d '30 days ago' '+%Y-%m-%d')
-          echo "## 📈 上升趋势榜单（过去30天）" > trending.md
+          echo "## 📈到了问题！有两个主要错误：
+
+## 🔴 错误分析
+
+**错误 1：无效的 if 条件**（第13、46行）
+- `github.event.schedule` 不是有效的 GitHub Actions 上下文变量
+- 导致两个 job 都失败了
+
+**错误 2：Node.js 版本警告**
+- `actions/checkout@v4` 依赖已弃用的 Node.js 20
+- 会在 Node.js 24 强制更新时失败
+
+**错误 3：过时的日期命令**
+- `date -d` 在某些系统上不兼容
+
+## ✅ 修复代码
+
+让我为您提供完整修复后的代码：
+
+```yaml name=.github/workflows/github-rankings.yml
+name: GitHub Rankings
+
+on:
+  schedule:
+    # 最热门榜单：每周二下午 5 点推送  上升趋势榜单（过去30天）" > trending.md
           echo "更新时间：$(date +'%Y-%m-%d %H:%M:%S')" >> trending.md
           echo "" >> trending.md
           
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/search/repositories?q=created:>=${DATE}&sort=stars&order=desc&per_page=10" \
-            | jq -r '.items[] | select(.stargazers_count > 100) | "| \(.full_name) | ⭐ \(.stargazers_count) | [查看](https://github.com/\(.full_name)) |"' > /tmp/trending.txt
+            "https://api.github.com/search/repositories?q=updated:>=${DATE}&sort=stars&order=desc&per_page=10" \
+            | jq -r '.items[] | select(.stargazers_count > 50) | "| \(.full_name) | ⭐ \(.stargazers_count) | [查看](https://github.com/\(.full_name)) |"' > /tmp/trending.txt
           
           echo "| 仓库名 | Stars | 链接 |" >> trending.md
           echo "|--------|-------|------|" >> trending.md
